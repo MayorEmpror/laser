@@ -1,0 +1,336 @@
+// import { extend } from "@react-three/fiber";
+// import { useLoader } from '@react-three/fiber'
+// import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
+// import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
+// import particlesVertexShader from "./shaders/wobble/particles/vertex.glsl.js";
+// import particlesFragmentShader from "./shaders/wobble/particles/fragment.glsl.js";
+// import { useThree } from "@react-three/fiber";
+// import * as THREE from "three";
+// import { useControls } from 'leva'
+// export default function  Particles() {
+//     // console.log("hel")
+//  const dracoLoader = new DRACOLoader()
+//      dracoLoader.setDecoderPath('/draco/')
+//     // const draco = new DRACOLoader();
+//     // draco.setDecoderConfig({ type: 'js' });
+//     // draco.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+//     // const gltf = useLoader(GLTFLoader, '/static/models.glb')
+
+//     // console.log(gltf)
+//     const gltf = new GLTFLoader();
+// gltf.setDRACOLoader(dracoLoader);
+
+// // then you can load your glb file
+// const glbPath = '/static/models.glb'
+// const { viewport,gl } = useThree();
+// const { width, height } = viewport;
+// const sizes ={
+//     width : width,
+//     height : height,
+//     pixelRatio :Math.min(gl.domElement.devicePixelRatio,2)
+// }
+// var locations = null
+// const  Particles = {}
+//   gltf.load(glbPath, function(gltf) {
+//     const positions = gltf.scene.children.map((child)=>{
+//      return  child.geometry.attributes.position;
+//     })
+//   console.log(positions)
+
+//  Particles.index =0
+//  Particles.maxCount = 0
+//  Particles.position = []
+
+//  for (const position of positions) {
+//     if (position.count > Particles.maxCount) {
+//       Particles.maxCount = position.count;
+//     }
+//       Particles.positions = [];
+//   }
+//   for (const position of positions) {
+//     const originalArray = position.array;
+
+//     const newArray = new Float32Array(Particles.maxCount * 3);
+//     for (let i = 0; i < Particles.maxCount; i++) {
+//       const i3 = i * 3;
+//       if (i3 < originalArray.length) {
+//         newArray[i3 + 0] = originalArray[i3 + 0];
+//         newArray[i3 + 1] = originalArray[i3 + 1];
+//         newArray[i3 + 2] = originalArray[i3 + 2];
+//       } else {
+//         const random = Math.floor(Math.random() * position.count) * 3;
+//         newArray[i3 + 0] = originalArray[random + 0];
+//         newArray[i3 + 1] = originalArray[random + 1];
+//         newArray[i3 + 2] = originalArray[random + 2];
+//       }
+//     }
+//     Particles.positions.push(new THREE.Float32BufferAttribute(newArray, 3));
+//   }
+//   //Particles.geometry.setIndex(null);
+//   console.log(Particles.maxCount);
+//   locations  = Particles.positions[Particles.index]
+//     return Particles
+
+// })
+// console.log(Particles)
+// const { uProgress } = useControls({
+//     uProgress:
+//     {     value: 0,
+//            min:0,
+//            max : 1,
+//           step: 0.01
+//     },
+
+//  })
+
+// return <>
+// {/* <primitive object={glbPath.scene} /> */}
+//     <points>
+//         <bufferGeometry>
+//            < shaderMaterial
+//             vertexShader={ particlesVertexShader }
+//             fragmentShader={ particlesFragmentShader }
+//             uniforms= {  {
+//                   uSize: new THREE.Uniform(0.1),
+//                 uResolution: new THREE.Uniform(
+//                   new THREE.Vector2(
+//                     sizes.width * sizes.pixelRatio,
+//                     sizes.height * sizes.pixelRatio
+//                   )
+//                 ),
+//                 uProgress: { value: uProgress },
+//                }   }
+//               blending={ THREE.AdditiveBlending}
+//               depthWrite ={ false}
+//            />
+//         <bufferAttribute attachObject={["attributes", "position"]} count={10000} array={ locations} itemSize={3} />
+//         </bufferGeometry>
+//     </points>
+// </>
+// }
+
+import React, { useState, useEffect, useRef } from "react";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader";
+import { useFrame, useLoader, useThree } from "@react-three/fiber";
+import * as THREE from "three";
+import { useControls } from "leva";
+import particlesVertexShader from "./shaders/wobble/particles/vertex.glsl.js";
+import particlesFragmentShader from "./shaders/wobble/particles/fragment.glsl.js";
+import { Points } from "@react-three/drei";
+import GUI from "lil-gui";
+const Particles = () => {
+  const { viewport, gl } = useThree();
+  const { width, height } = viewport;
+  const sizes = {
+    width: width,
+    height: height,
+    pixelRatio: Math.min(gl.domElement.devicePixelRatio, 2),
+  };
+  const points = useRef();
+  const geom = useRef()
+  // State to hold particles data
+  const [particles, setParticles] = useState(null);
+
+  useEffect(() => {
+    const gltfLoader = new GLTFLoader();
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath("/draco/");
+    gltfLoader.setDRACOLoader(dracoLoader);
+
+    const glbPath = "/static/models.glb";
+
+    // Load GLTF model
+    gltfLoader.load(glbPath, (gltf) => {
+      const positions = gltf.scene.children.map(
+        (child) => child.geometry.attributes.position
+      );
+
+      // Process positions to set up particles data
+      const ParticlesData = {
+        index: 0,
+        maxCount: 0,
+        positions: [],
+      };
+
+      for (const position of positions) {
+        if (position.count > ParticlesData.maxCount) {
+          ParticlesData.maxCount = position.count;
+        }
+      }
+
+      for (const position of positions) {
+        const originalArray = position.array;
+        const newArray = new Float32Array(ParticlesData.maxCount * 3);
+        for (let i = 0; i < ParticlesData.maxCount; i++) {
+          const i3 = i * 3;
+          if (i3 < originalArray.length) {
+            newArray[i3 + 0] = originalArray[i3 + 0];
+            newArray[i3 + 1] = originalArray[i3 + 1];
+            newArray[i3 + 2] = originalArray[i3 + 2];
+          } else {
+            const random = Math.floor(Math.random() * position.count) * 3;
+            newArray[i3 + 0] = originalArray[random + 0];
+            newArray[i3 + 1] = originalArray[random + 1];
+            newArray[i3 + 2] = originalArray[random + 2];
+          }
+        }
+        ParticlesData.positions.push(
+          new THREE.Float32BufferAttribute(newArray, 3)
+        );
+      }
+
+      // Set particles state once data is processed
+      setParticles(ParticlesData);
+    });
+  }, []); // Empty dependency array ensures this effect runs only once
+  // useEffect(() => {
+  //   if (!geom.current) return
+  //   geom.current.setAttribute(
+  //     "position",
+  //     particles.positions[particles.index]
+  //   );
+  // }, [geom])
+  const { uProgress } = useControls({
+    uProgress: {
+      value: 0.5,
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
+  });
+
+  if (!particles) return null; // Render nothing until particles data is loaded
+
+  const { index, positions } = particles;
+  const locations = positions[index];
+  // const gui = new GUI({ width: 340 });
+  // useFrame(() => {
+  //   points.current.uniforms.uProgress = uProgress
+  // })
+  //console.log(points.current.uniforms.uProgress)
+  //gui.add(points.current.uniforms.uProgress, 'value').min(0).max(1).step(0.01).name(`${props.name}`);
+  return (
+    <>
+      <points >
+        <bufferGeometry ref={geom}>
+          <bufferAttribute
+            // attachObject={['attributes', 'position']}
+            attach={"attributes-position"}
+            count={locations.count}
+            array={locations.array}
+            itemSize={3}
+          />
+        </bufferGeometry>
+          <shaderMaterial
+            vertexShader={particlesVertexShader}
+            fragmentShader={particlesFragmentShader}
+            uniforms={{
+              uSize: new THREE.Uniform(200),
+              uResolution: new THREE.Uniform(new THREE.Vector2(sizes.width * sizes.pixelRatio, sizes.height * sizes.pixelRatio)),
+              uProgress: { value: uProgress }
+            }}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+      </points>
+      {/* <Points scale={1} positions={locations.array} sizes={locations.array}>
+        <shaderMaterial
+          ref={points}
+          vertexShader={particlesVertexShader}
+          fragmentShader={particlesFragmentShader}
+          uniforms={{
+            uSize: new THREE.Uniform(200000000),
+            uResolution: new THREE.Uniform(
+              new THREE.Vector2(
+                sizes.width * sizes.pixelRatio,
+                sizes.height * sizes.pixelRatio
+              )
+            ),
+            uProgress: { value: uProgress },
+          }}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </Points> */}
+    </>
+  );
+};
+
+export default Particles;
+
+
+
+
+
+     {/* <group ref={group_} position-y={-18}> */}
+     {/* </group>
+    <OrbitControls/>
+   
+      {/* <EffectComposer>
+        <Bloom luminanceThreshold={ 1.1 } mipmapBlur/>
+    </EffectComposer> */}
+   {/* <Sparkles size={15}   scale={ [ 40, 20, 40 ] } position={[-10,0,1]} speed={2} count={100}/> */}
+   {/* <PlaneMesh  heading={"SKILLS"} position={ [-5.32,-3.60,47.1]  }  rotation={[0,-7.39,-9.42]} />
+ */}
+
+{/* <PlaneMesh  heading={"ACHIEVEMENTS"} args={[1.5,1,0.25]} textpos={[-0.60,-0.25,-0.25]}  scaledown={true} position={ [-28.3,-20.6,-40.9] }  rotation={[0,-9.39,-9.42]} /> */}
+
+
+{/* <PlaneMesh heading={"EDUCATION"} position={ [7.70,-49.6,55.10]  } args={[1.5,1,0.25]} textpos={[-0.60,-0.20,-0.25]} rotation={[0,-6.75,-9.42]} /> */}
+
+{/* <PlaneMesh heading={"PROJECTS"} 
+textpos={[0.50,-0.20,0.25]}
+args={[1.2,1,0.25]}
+Rotation={2 * Math.PI}
+position={ [-24.3,-68.6,-50.9] } 
+rotation={[0,-6.59,-9.42]} /> */}
+
+{/* <PlaneMesh heading={"PRICING"} 
+args={[1.2,1,0.25]}
+textpos={[-0.42,-0.20,-0.25]}
+position={ [4.61,-93.9,50.07]  }  rotation={[0,-6.85,-9.42]} /> */}
+{/* <PlaneMesh
+Rotation={2 * Math.PI}
+ heading={"REVIEWS"}
+
+textpos={[0.53,-0.20,0.5]}
+args={[1.2,1,0.25]}
+
+  position={ [-20.3,-118.6,-47.9]}  rotation={[0,-6.34,-9.42]} /> */}
+  {/* <CustomPoints/> */}
+     {/* <instancedMesh args={[null, null, 200]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial color="black" />
+      </instancedMesh> */}
+{/* <mesh 
+ref={csmesh}
+geometry={geometry}
+receiveShadow  castShadow
+            position={[-70,-0,-0]}
+             rotation={[0,-7.84,-9.42]}
+             scale={ 20 }>
+
+              <CustomShaderMaterial
+               baseMaterial={ THREE.MeshPhysicalMaterial}
+  vertexShader={ wobbleVertexShader}
+  fragmentShader={ wobbleFragmentShader}
+  uniforms={ Uniforms}
+  silent={ true}
+  // MeshPhysicalMaterial
+  metalness={1}
+  roughness={ 5}
+  color={ '#ffffff'}
+  transmission={ 0}
+  ior={ 1.5}
+  thickness={ 1.5}
+  transparent={ true}
+  wireframe={ false}
+             ge />
+          
+            
+        </mesh> */}
+
+{/* <Instmesh Geometry={  <dodecahedronGeometry />}/>
+<Instmesh Geometry={  <sphereGeometry />}/>
+<Instmesh Geometry={  <boxGeometry />}/> */}
